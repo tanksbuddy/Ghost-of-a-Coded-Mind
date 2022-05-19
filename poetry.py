@@ -5,7 +5,7 @@
 ## Represents an old 90s terminal.
 ##
 ## Authors: Nami Eskandarian & Joseph Norton
-## Version: 1.0
+## Version: 1.1
 
 import copy
 import sys, pygame, random
@@ -37,8 +37,8 @@ class GameString:
         self.verbs = verbs
 
         # Replace beginning of nouns and verbs banks with defaults
-        self.nouns.insert(0, "[Noun]")
-        self.verbs.insert(0, "[Verb]")
+        self.nouns.insert(0, "[NOUN]")
+        self.verbs.insert(0, "[VERB]")
 
         # Current index of each bank
         self.pronounIndex = 0
@@ -82,25 +82,25 @@ class GameString:
         if up:
             match self.select:
                 case WordSelection.pronoun:
-                    if self.pronounIndex == len(self.pronouns) - 1:
+                    if self.pronounIndex >= len(self.pronouns) - 1:
                         self.pronounIndex = 1
                     else:
                         self.pronounIndex += 1
                     return
                 case WordSelection.sense:
-                    if self.senseIndex == len(self.senses) - 1:
+                    if self.senseIndex >= len(self.senses) - 1:
                         self.senseIndex = 1
                     else:
                         self.senseIndex += 1
                     return
                 case WordSelection.noun:
-                    if self.nounIndex == len(self.nouns) - 1:
+                    if self.nounIndex >= len(self.nouns) - 1:
                         self.nounIndex = 1
                     else:
                         self.nounIndex += 1
                     return
                 case WordSelection.verb:
-                    if self.verbIndex == len(self.verbs) - 1:
+                    if self.verbIndex >= len(self.verbs) - 1:
                         self.verbIndex = 1
                     else:
                         self.verbIndex += 1
@@ -108,25 +108,25 @@ class GameString:
         else:
             match self.select:
                 case WordSelection.pronoun:
-                    if self.pronounIndex == 1:
+                    if self.pronounIndex <= 1:
                         self.pronounIndex = len(self.pronouns) - 1
                     else:
                         self.pronounIndex -= 1
                     return
                 case WordSelection.sense:
-                    if self.senseIndex == 1:
+                    if self.senseIndex <= 1:
                         self.senseIndex = len(self.senses) - 1
                     else:
                         self.senseIndex -= 1
                     return
                 case WordSelection.noun:
-                    if self.nounIndex == 1:
+                    if self.nounIndex <= 1:
                         self.nounIndex = len(self.nouns) - 1
                     else:
                         self.nounIndex -= 1
                     return
                 case WordSelection.verb:
-                    if self.verbIndex == 1:
+                    if self.verbIndex <= 1:
                         self.verbIndex = len(self.verbs) - 1
                     else:
                         self.verbIndex -= 1
@@ -161,26 +161,26 @@ pygame.display.set_caption('Ghost of a Coded Mind')
 
 file = open("Pronoun Wordbank.txt")
 pronouns = file.read().split("\n")
-pronouns[0] = "[Pronoun]"
+pronouns[0] = "[PRONOUN]" # "[Pronoun]"
 file.close()
 
 file = open("Senses Wordbank.txt")
 senses = file.read().split("\n")
-senses[0] = "[Sense]"
+senses[0] = "[SENSE]" # "[Sense]"
 file.close()
 
 the = "The"
 
 file = open("Noun Wordbank.txt")
 nouns = file.read().split("\n")
-nouns[0] = "[Noun]"
+nouns.pop(0)
 file.close()
 
 file = open("Verb Wordbank.txt")
 verbs = file.read().split("\n")
+verbs.pop(0)
 for i in range(len(verbs)):
     verbs[i] = verbs[i].strip().capitalize()
-verbs[0] = "[Verb]"
 file.close()
 
 # Setup font for terminal
@@ -228,21 +228,21 @@ theText = font.render(" The ", True, green, black) # Render "The" part of each p
 
 while 1:
     # Get the current editable poem words
-    pronounText = font.render(" " + gamestring.getList()[0].capitalize() + " ", True, green, black)
-    senseText = font.render(" " + gamestring.getList()[1].capitalize() + " ", True, green, black)
-    nounText = font.render(" " + gamestring.getList()[3].capitalize() + " ", True, green, black)
-    verbText = font.render(" " + gamestring.getList()[4].capitalize() + " ", True, green, black)
+    pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
+    senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
+    nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black)
+    verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
 
     # Change whichever word is selected to have a different background
     match gamestring.select:
         case WordSelection.pronoun:
-                pronounText = font.render(" " + gamestring.getList()[0].capitalize() + " ", True, black, green)
+                pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
         case WordSelection.sense:
-                senseText = font.render(" " + gamestring.getList()[1].capitalize() + " ", True, black, green)
+                senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
         case WordSelection.noun:
-                nounText = font.render(" " + gamestring.getList()[3].capitalize() + " ", True, black, green)
+                nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
         case WordSelection.verb:
-                verbText = font.render(" " + gamestring.getList()[4].capitalize() + " ", True, black, green)
+                verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
 
     # Setup text boxes for editable poem
     verbRect = verbText.get_rect()
