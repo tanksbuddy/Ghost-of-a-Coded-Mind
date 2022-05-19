@@ -8,10 +8,10 @@
 ## Version: 1.0
 
 import copy
-from multiprocessing.connection import wait
 import sys, pygame, random
 from time import sleep
 from enum import Enum
+
 pygame.init()
 
 # Enum class to denote which word is selected
