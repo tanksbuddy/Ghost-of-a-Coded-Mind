@@ -226,6 +226,10 @@ newLine = False # Flag for cursor animation
 gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit)) # Current editable poem
 theText = font.render(" The ", True, green, black) # Render "The" part of each poem
 
+creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker", True, green, black)
+creditRect = creditLine.get_rect()
+creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
+
 while 1:
     # Get the current editable poem words
     pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
@@ -269,6 +273,7 @@ while 1:
     display_surface.blit(lineText, lineRectTop)
     display_surface.blit(lineText, lineRectBot)
     display_surface.blit(instructionText, instructionRect)
+    display_surface.blit(creditLine, creditRect)
 
     # Display the editable poem
     display_surface.blit(pronounText, proRect)
