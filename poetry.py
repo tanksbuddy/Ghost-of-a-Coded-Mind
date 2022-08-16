@@ -5,7 +5,7 @@
 ## Represents an old 90s terminal.
 ##
 ## Authors: Nami Eskandarian & Joseph Norton
-## Version: 1.1
+## Version: 1.2
 
 import copy
 import sys, pygame, random
@@ -13,6 +13,13 @@ from time import sleep
 from enum import Enum
 
 pygame.init()
+pygame.joystick.init()
+joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+joystick = joysticks[0]
+joystick.init()
+
+print(f"Numbuttons = {joysticks[0].get_numbuttons()}")
+print(f"Numhat = {joystick.get_numaxes()}")
 
 # Enum class to denote which word is selected
 class WordSelection(Enum):
@@ -49,88 +56,68 @@ class GameString:
     # Method to swap selected type of word
     def swapSelected(self, right):
         if right == 1:
-            match self.select:
-                case WordSelection.pronoun:
-                    self.select = WordSelection.sense
-                    return
-                case WordSelection.sense:
-                    self.select = WordSelection.noun
-                    return
-                case WordSelection.noun:
-                    self.select = WordSelection.verb
-                    return
-                case WordSelection.verb:
-                    self.select = WordSelection.pronoun
-                    return
+            if self.select == WordSelection.pronoun:
+                self.select = WordSelection.sense
+            elif self.select == WordSelection.sense:
+                self.select = WordSelection.noun
+            elif self.select == WordSelection.noun:
+                self.select = WordSelection.verb
+            elif self.select == WordSelection.verb:
+                self.select = WordSelection.pronoun
         else:
-            match self.select:
-                case WordSelection.pronoun:
-                    self.select = WordSelection.verb
-                    return
-                case WordSelection.sense:
-                    self.select = WordSelection.pronoun
-                    return
-                case WordSelection.noun:
-                    self.select = WordSelection.sense
-                    return
-                case WordSelection.verb:
-                    self.select = WordSelection.noun
-                    return
+            if self.select == WordSelection.pronoun:
+                self.select = WordSelection.verb
+            elif self.select == WordSelection.sense:
+                self.select = WordSelection.pronoun
+            elif self.select == WordSelection.noun:
+                self.select = WordSelection.sense
+            elif self.select == WordSelection.verb:
+                self.select = WordSelection.noun
 
     # Method to swap word based on selection
     def swapWord(self, up):
         if up:
-            match self.select:
-                case WordSelection.pronoun:
-                    if self.pronounIndex >= len(self.pronouns) - 1:
-                        self.pronounIndex = 1
-                    else:
-                        self.pronounIndex += 1
-                    return
-                case WordSelection.sense:
-                    if self.senseIndex >= len(self.senses) - 1:
-                        self.senseIndex = 1
-                    else:
-                        self.senseIndex += 1
-                    return
-                case WordSelection.noun:
-                    if self.nounIndex >= len(self.nouns) - 1:
-                        self.nounIndex = 1
-                    else:
-                        self.nounIndex += 1
-                    return
-                case WordSelection.verb:
-                    if self.verbIndex >= len(self.verbs) - 1:
-                        self.verbIndex = 1
-                    else:
-                        self.verbIndex += 1
-                    return
+            if self.select == WordSelection.pronoun:
+                if self.pronounIndex >= len(self.pronouns) - 1:
+                    self.pronounIndex = 1
+                else:
+                    self.pronounIndex += 1
+            elif self.select == WordSelection.sense:
+                if self.senseIndex >= len(self.senses) - 1:
+                    self.senseIndex = 1
+                else:
+                    self.senseIndex += 1
+            elif self.select ==  WordSelection.noun:
+                if self.nounIndex >= len(self.nouns) - 1:
+                    self.nounIndex = 1
+                else:
+                    self.nounIndex += 1
+            elif self.select == WordSelection.verb:
+                if self.verbIndex >= len(self.verbs) - 1:
+                    self.verbIndex = 1
+                else:
+                    self.verbIndex += 1
         else:
-            match self.select:
-                case WordSelection.pronoun:
-                    if self.pronounIndex <= 1:
-                        self.pronounIndex = len(self.pronouns) - 1
-                    else:
-                        self.pronounIndex -= 1
-                    return
-                case WordSelection.sense:
-                    if self.senseIndex <= 1:
-                        self.senseIndex = len(self.senses) - 1
-                    else:
-                        self.senseIndex -= 1
-                    return
-                case WordSelection.noun:
-                    if self.nounIndex <= 1:
-                        self.nounIndex = len(self.nouns) - 1
-                    else:
-                        self.nounIndex -= 1
-                    return
-                case WordSelection.verb:
-                    if self.verbIndex <= 1:
-                        self.verbIndex = len(self.verbs) - 1
-                    else:
-                        self.verbIndex -= 1
-                    return
+            if self.select == WordSelection.pronoun:
+                if self.pronounIndex <= 1:
+                    self.pronounIndex = len(self.pronouns) - 1
+                else:
+                    self.pronounIndex -= 1
+            elif self.select == WordSelection.sense:
+                if self.senseIndex <= 1:
+                    self.senseIndex = len(self.senses) - 1
+                else:
+                    self.senseIndex -= 1
+            elif self.select == WordSelection.noun:
+                if self.nounIndex <= 1:
+                    self.nounIndex = len(self.nouns) - 1
+                else:
+                    self.nounIndex -= 1
+            elif self.select == WordSelection.verb:
+                if self.verbIndex <= 1:
+                    self.verbIndex = len(self.verbs) - 1
+                else:
+                    self.verbIndex -= 1
 
     # Returns a list of selected words
     def getList(self):
@@ -152,7 +139,7 @@ height = 1080
 size = width, height
 display_surface = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Ghost of a Coded Mind')
-# pygame.display.toggle_fullscreen()
+pygame.display.toggle_fullscreen()
 
 # Format of the poem
 # PRONOUNS SENSES "The" NOUNS VERBS
@@ -238,15 +225,14 @@ while 1:
     verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
 
     # Change whichever word is selected to have a different background
-    match gamestring.select:
-        case WordSelection.pronoun:
-                pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
-        case WordSelection.sense:
-                senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
-        case WordSelection.noun:
-                nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
-        case WordSelection.verb:
-                verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
+    if gamestring.select == WordSelection.pronoun:
+        pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
+    elif gamestring.select == WordSelection.sense:
+        senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
+    elif gamestring.select == WordSelection.noun:
+        nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
+    elif gamestring.select == WordSelection.verb:
+        verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
 
     # Setup text boxes for editable poem
     verbRect = verbText.get_rect()
@@ -311,6 +297,8 @@ while 1:
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                sys.exit()
             if event.key == pygame.K_LEFT:
                 gamestring.swapSelected(False) # Move to left word
             if event.key == pygame.K_RIGHT:
@@ -336,6 +324,38 @@ while 1:
                 cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
                 cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
                 newLine = True
+        
+        if event.type == pygame.JOYBUTTONDOWN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
+            # If this event is reached, the user has successfully submitted a poem
+            
+            # Limit for poems on screen
+            if len(poetryBank) == poemLimit:
+                poetryBank.pop()
+
+            # Insert poem into the bank
+            poetryBank.insert(0, " ".join(gamestring.getList()))
+
+            # Reset Text box
+            gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
+        
+            # Setup cursor for animation to play
+            cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
+            cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
+            newLine = True                
+
+    if(joystick.get_axis(1) > 0.1):
+        gamestring.swapWord(False) # Go through selected bank down
+        sleep(0.2)
+    if(joystick.get_axis(0) > 0.1):
+        gamestring.swapSelected(True) # Move to right word
+        sleep(0.2)
+    if(joystick.get_axis(1) < -0.1):
+        gamestring.swapWord(True) # Go through selected bank up
+        sleep(0.2)
+    if(joystick.get_axis(0) < -0.1):
+        gamestring.swapSelected(False) # Move to left word
+        sleep(0.2)
+
 
     # Update graphics
     pygame.display.update()
