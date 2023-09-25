@@ -15,11 +15,12 @@ from enum import Enum
 pygame.init()
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
-joystick = joysticks[0]
-joystick.init()
+if(len(joysticks) > 0):
+    joystick = joysticks[0]
+    joystick.init()
 
-print(f"Numbuttons = {joysticks[0].get_numbuttons()}")
-print(f"Numhat = {joystick.get_numaxes()}")
+    print(f"Numbuttons = {joysticks[0].get_numbuttons()}")
+    print(f"Numhat = {joystick.get_numaxes()}")
 
 # Enum class to denote which word is selected
 class WordSelection(Enum):
@@ -139,7 +140,7 @@ height = 1080
 size = width, height
 display_surface = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Ghost of a Coded Mind')
-pygame.display.toggle_fullscreen()
+# pygame.display.toggle_fullscreen()
 
 # Format of the poem
 # PRONOUNS SENSES "The" NOUNS VERBS
@@ -221,7 +222,7 @@ while 1:
     # Get the current editable poem words
     pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
     senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
-    nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black)
+    nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black) 
     verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
 
     # Change whichever word is selected to have a different background
@@ -343,18 +344,19 @@ while 1:
             cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
             newLine = True                
 
-    if(joystick.get_axis(1) > 0.1):
-        gamestring.swapWord(False) # Go through selected bank down
-        sleep(0.2)
-    if(joystick.get_axis(0) > 0.1):
-        gamestring.swapSelected(True) # Move to right word
-        sleep(0.2)
-    if(joystick.get_axis(1) < -0.1):
-        gamestring.swapWord(True) # Go through selected bank up
-        sleep(0.2)
-    if(joystick.get_axis(0) < -0.1):
-        gamestring.swapSelected(False) # Move to left word
-        sleep(0.2)
+    if(len(joysticks) > 0):
+        if(joystick.get_axis(1) > 0.1):
+            gamestring.swapWord(False) # Go through selected bank down
+            sleep(0.2)
+        if(joystick.get_axis(0) > 0.1):
+            gamestring.swapSelected(True) # Move to right word
+            sleep(0.2)
+        if(joystick.get_axis(1) < -0.1):
+            gamestring.swapWord(True) # Go through selected bank up
+            sleep(0.2)
+        if(joystick.get_axis(0) < -0.1):
+            gamestring.swapSelected(False) # Move to left word
+            sleep(0.2)
 
 
     # Update graphics
