@@ -5,15 +5,36 @@
 ## Represents an old 90s terminal.
 ##
 ## Authors: Nami Eskandarian & Joseph Norton
-## Version: 1.2
+## Version: 1.3
 
 import copy
+import time
 import sys, pygame, random
 from time import sleep
 from enum import Enum
 
 pygame.init()
 pygame.joystick.init()
+pygame.mouse.set_visible(False)
+joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+#print(len(joysticks))
+
+def pause():
+    done = False
+    print('Please input with the controller')
+    while not done:
+        #pygame.init()
+        pygame.joystick.quit()
+        pygame.joystick.init()
+        joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+        if len(joysticks) > 0:
+            done = True
+
+try:
+    joystick = joysticks[0]
+except IndexError:
+    pause()
+
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 joystick = joysticks[0]
 joystick.init()
@@ -135,9 +156,13 @@ blue = (0, 0, 128)
 width = 1920
 height = 1080
 
+# Change the delay and deadzone to optimize controller sensitivity
+delay = 0.25
+deadzoneX = 0.8
+deadzoneY = 0.7
+
 # Setup screen of game
-size = width, height
-display_surface = pygame.display.set_mode((width, height))
+display_surface = pygame.display.set_mode((width, height), pygame.SCALED)
 pygame.display.set_caption('Ghost of a Coded Mind')
 pygame.display.toggle_fullscreen()
 
@@ -213,9 +238,10 @@ newLine = False # Flag for cursor animation
 gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit)) # Current editable poem
 theText = font.render(" The ", True, green, black) # Render "The" part of each poem
 
-creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker", True, green, black)
+creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker \n Optimized by Mark Nusser", True, green, black)
 creditRect = creditLine.get_rect()
 creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
+lastMove = time.time()
 
 while 1:
     # Get the current editable poem words
@@ -293,6 +319,23 @@ while 1:
         else:
             newLine = False
         
+
+    if ((time.time() - lastMove) > delay):
+        if(joystick.get_axis(1) > deadzoneY):
+            gamestring.swapWord(False) # Go through selected bank down
+            lastMove = time.time()
+        elif(joystick.get_axis(0) > deadzoneX):
+            gamestring.swapSelected(True) # Move to right word
+            lastMove = time.time()
+        elif(joystick.get_axis(1) < -deadzoneY):
+            gamestring.swapWord(True) # Go through selected bank up
+            lastMove = time.time()
+        elif(joystick.get_axis(0) < -deadzoneX):
+            gamestring.swapSelected(False) # Move to left word
+            lastMove = time.time() 
+            
+        #print(str(joystick.get_axis(1)) + "     " + str(joystick.get_axis(0)))
+        
     # Keep track of events
     for event in pygame.event.get():
         if event.type == pygame.QUIT: sys.exit()
@@ -324,10 +367,10 @@ while 1:
                 cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
                 cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
                 newLine = True
-        
+        #if event.type == pygame.JOYBUTTONUP: print(event.type)
         if event.type == pygame.JOYBUTTONDOWN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
-            # If this event is reached, the user has successfully submitted a poem
-            
+            #for i in range(joystick.get_numbuttons()): print(f"Button: {i} {joystick.get_button(i)}") # If this event is reached, the user has successfully submitted a poem
+            #print("submitted " + str(event.type))
             # Limit for poems on screen
             if len(poetryBank) == poemLimit:
                 poetryBank.pop()
@@ -341,21 +384,19 @@ while 1:
             # Setup cursor for animation to play
             cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
             cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
-            newLine = True                
+            newLine = True
+        if event.type == pygame.JOYDEVICEREMOVED:
+            pause()
+            joystick = joysticks[0]
+            joystick.init()
+            continue;
 
-    if(joystick.get_axis(1) > 0.1):
-        gamestring.swapWord(False) # Go through selected bank down
-        sleep(0.2)
-    if(joystick.get_axis(0) > 0.1):
-        gamestring.swapSelected(True) # Move to right word
-        sleep(0.2)
-    if(joystick.get_axis(1) < -0.1):
-        gamestring.swapWord(True) # Go through selected bank up
-        sleep(0.2)
-    if(joystick.get_axis(0) < -0.1):
-        gamestring.swapSelected(False) # Move to left word
-        sleep(0.2)
+    
+    
+    #if(pygame.joystick.get_count() <= 0):
+     #   sys.exit()
 
 
-    # Update graphics
+# Update graphics
     pygame.display.update()
+    
