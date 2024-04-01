@@ -9,7 +9,8 @@
 
 import copy
 import time
-import sys, pygame, random
+import asyncio
+import pygame, random
 from time import sleep
 from enum import Enum
 
@@ -143,9 +144,8 @@ deadzoneX = 0.8
 deadzoneY = 0.7
 
 # Setup screen of game
-display_surface = pygame.display.set_mode((width, height), pygame.SCALED)
+display_surface = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Ghost of a Coded Mind')
-pygame.display.toggle_fullscreen()
 
 # Format of the poem
 # PRONOUNS SENSES "The" NOUNS VERBS
@@ -185,7 +185,7 @@ instructionRect = instructionText.get_rect()
 instructionRect.center = (width / 6 + instructionRect.width / 2, height - 150)
 
 # Create text for title
-title = ("  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", " /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", "/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", "\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", " \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", "        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ ")
+title = (r"  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", r" /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", r"/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", r"\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", r" \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", r"        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ ")
 titlefont = pygame.font.Font('ModernDOS9x16.ttf', 16)
 titleText1 = titlefont.render(title[0], True, green, black)
 titleText2 = titlefont.render(title[1], True, green, black)
@@ -224,113 +224,135 @@ creditRect = creditLine.get_rect()
 creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
 lastMove = time.time()
 
-while 1:
-    # Get the current editable poem words
-    pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
-    senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
-    nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black) 
-    verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
+async def main():
 
-    # Change whichever word is selected to have a different background
-    if gamestring.select == WordSelection.pronoun:
-        pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
-    elif gamestring.select == WordSelection.sense:
-        senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
-    elif gamestring.select == WordSelection.noun:
-        nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
-    elif gamestring.select == WordSelection.verb:
-        verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
+    global gamestring, newLine, lastMove
+    
+    while True:
+        # Get the current editable poem words
+        pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
+        senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
+        nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black) 
+        verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
 
-    # Setup text boxes for editable poem
-    verbRect = verbText.get_rect()
-    verbRect.center = (5 * width / 6 - verbRect.width / 2, height - 150)
-    nounRect = nounText.get_rect()
-    nounRect.center = (verbRect.center[0] - verbRect.width / 2 - nounRect.width / 2, height - 150)
-    theRect = theText.get_rect()
-    theRect.center = (nounRect.center[0] - nounRect.width / 2 - theRect.width / 2, height - 150)
-    senRect = senseText.get_rect()
-    senRect.center = (theRect.center[0] - theRect.width / 2 - senRect.width / 2, height - 150)
-    proRect = pronounText.get_rect()
-    proRect.center = (senRect.center[0] - senRect.width / 2 - proRect.width / 2, height - 150)
+        # Change whichever word is selected to have a different background
+        if gamestring.select == WordSelection.pronoun:
+            pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
+        elif gamestring.select == WordSelection.sense:
+            senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
+        elif gamestring.select == WordSelection.noun:
+            nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
+        elif gamestring.select == WordSelection.verb:
+            verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
 
-    # Fill the screen with a black color
-    display_surface.fill(black)
+        # Setup text boxes for editable poem
+        verbRect = verbText.get_rect()
+        verbRect.center = (5 * width / 6 - verbRect.width / 2, height - 150)
+        nounRect = nounText.get_rect()
+        nounRect.center = (verbRect.center[0] - verbRect.width / 2 - nounRect.width / 2, height - 150)
+        theRect = theText.get_rect()
+        theRect.center = (nounRect.center[0] - nounRect.width / 2 - theRect.width / 2, height - 150)
+        senRect = senseText.get_rect()
+        senRect.center = (theRect.center[0] - theRect.width / 2 - senRect.width / 2, height - 150)
+        proRect = pronounText.get_rect()
+        proRect.center = (senRect.center[0] - senRect.width / 2 - proRect.width / 2, height - 150)
 
-    # Display the title, lines, and instructions
-    display_surface.blit(titleText1, titleRect1)
-    display_surface.blit(titleText2, titleRect2)
-    display_surface.blit(titleText3, titleRect3)
-    display_surface.blit(titleText4, titleRect4)
-    display_surface.blit(titleText5, titleRect5)
-    display_surface.blit(titleText6, titleRect6)
-    display_surface.blit(lineText, lineRectTop)
-    display_surface.blit(lineText, lineRectBot)
-    display_surface.blit(instructionText, instructionRect)
-    display_surface.blit(creditLine, creditRect)
+        # Fill the screen with a black color
+        display_surface.fill(black)
 
-    # Display the editable poem
-    display_surface.blit(pronounText, proRect)
-    display_surface.blit(senseText, senRect)
-    display_surface.blit(theText, theRect)
-    display_surface.blit(nounText, nounRect)
-    display_surface.blit(verbText, verbRect)
+        # Display the title, lines, and instructions
+        display_surface.blit(titleText1, titleRect1)
+        display_surface.blit(titleText2, titleRect2)
+        display_surface.blit(titleText3, titleRect3)
+        display_surface.blit(titleText4, titleRect4)
+        display_surface.blit(titleText5, titleRect5)
+        display_surface.blit(titleText6, titleRect6)
+        display_surface.blit(lineText, lineRectTop)
+        display_surface.blit(lineText, lineRectBot)
+        display_surface.blit(instructionText, instructionRect)
+        display_surface.blit(creditLine, creditRect)
 
-    # Display all recorded poems
-    for i in range(len(poetryBank)):
-        text = font.render("<: " + poetryBank[i], True, green, black)
-        textRect = text.get_rect()
-        textRect.center = (width / 6 + textRect.width / 2, height / 4 + 50*i)
-        display_surface.blit(text, textRect)
+        # Display the editable poem
+        display_surface.blit(pronounText, proRect)
+        display_surface.blit(senseText, senRect)
+        display_surface.blit(theText, theRect)
+        display_surface.blit(nounText, nounRect)
+        display_surface.blit(verbText, verbRect)
 
-        if(i == 0):
-            newLineRect = textRect
+        # Display all recorded poems
+        for i in range(len(poetryBank)):
+            text = font.render("<: " + poetryBank[i], True, green, black)
+            textRect = text.get_rect()
+            textRect.center = (width / 6 + textRect.width / 2, height / 4 + 50*i)
+            display_surface.blit(text, textRect)
 
-    # Play animation of cursor typing poem if flag is set
-    if(newLine):
+            if(i == 0):
+                newLineRect = textRect
 
-        # If the cursor has not finished the poem, play the animation
-        if(cursor.right < newLineRect.right + 33):
-            cursor = cursor.move(16, 0)
-            cursorCensor = cursorCensor.move(16, 0)
-            pygame.draw.rect(display_surface, white, cursor)
-            pygame.draw.rect(display_surface, black, cursorCensor)
-            sleep(0.05)
-        
-        # Otherwise, end the animation
-        else:
-            newLine = False
+        # Play animation of cursor typing poem if flag is set
+        if(newLine):
 
-    if ((time.time() - lastMove) > delay and len(joysticks) > 0):
-        if(joystick.get_axis(1) > deadzoneY):
-            gamestring.swapWord(False) # Go through selected bank down
-            lastMove = time.time()
-        elif(joystick.get_axis(0) > deadzoneX):
-            gamestring.swapSelected(True) # Move to right word
-            lastMove = time.time()
-        elif(joystick.get_axis(1) < -deadzoneY):
-            gamestring.swapWord(True) # Go through selected bank up
-            lastMove = time.time()
-        elif(joystick.get_axis(0) < -deadzoneX):
-            gamestring.swapSelected(False) # Move to left word
-            lastMove = time.time() 
+            # If the cursor has not finished the poem, play the animation
+            if(cursor.right < newLineRect.right + 33):
+                cursor = cursor.move(16, 0)
+                cursorCensor = cursorCensor.move(16, 0)
+                pygame.draw.rect(display_surface, white, cursor)
+                pygame.draw.rect(display_surface, black, cursorCensor)
+                sleep(0.05)
             
-        #print(str(joystick.get_axis(1)) + "     " + str(joystick.get_axis(0)))
+            # Otherwise, end the animation
+            else:
+                newLine = False
 
-    # Keep track of events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT: sys.exit()
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                sys.exit()
-            if event.key == pygame.K_LEFT:
-                gamestring.swapSelected(False) # Move to left word
-            if event.key == pygame.K_RIGHT:
-                gamestring.swapSelected(True) # Move to right word
-            if event.key == pygame.K_UP:
-                gamestring.swapWord(True) # Go through selected bank up
-            if event.key == pygame.K_DOWN:
+        if ((time.time() - lastMove) > delay and len(joysticks) > 0):
+            if(joystick.get_axis(1) > deadzoneY):
                 gamestring.swapWord(False) # Go through selected bank down
-            if event.key == pygame.K_RETURN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
+                lastMove = time.time()
+            elif(joystick.get_axis(0) > deadzoneX):
+                gamestring.swapSelected(True) # Move to right word
+                lastMove = time.time()
+            elif(joystick.get_axis(1) < -deadzoneY):
+                gamestring.swapWord(True) # Go through selected bank up
+                lastMove = time.time()
+            elif(joystick.get_axis(0) < -deadzoneX):
+                gamestring.swapSelected(False) # Move to left word
+                lastMove = time.time() 
+                
+            #print(str(joystick.get_axis(1)) + "     " + str(joystick.get_axis(0)))
+                
+        # Update graphics
+        pygame.display.update()
+
+        # Keep track of events
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    gamestring.swapSelected(False) # Move to left word
+                if event.key == pygame.K_RIGHT:
+                    gamestring.swapSelected(True) # Move to right word
+                if event.key == pygame.K_UP:
+                    gamestring.swapWord(True) # Go through selected bank up
+                if event.key == pygame.K_DOWN:
+                    gamestring.swapWord(False) # Go through selected bank down
+                if event.key == pygame.K_RETURN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
+                    # If this event is reached, the user has successfully submitted a poem
+                    
+                    # Limit for poems on screen
+                    if len(poetryBank) == poemLimit:
+                        poetryBank.pop()
+
+                    # Insert poem into the bank
+                    poetryBank.insert(0, " ".join(gamestring.getList()))
+
+                    # Reset Text box
+                    gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
+                
+                    # Setup cursor for animation to play
+                    cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
+                    cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
+                    newLine = True
+            
+            if event.type == pygame.JOYBUTTONDOWN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
                 # If this event is reached, the user has successfully submitted a poem
                 
                 # Limit for poems on screen
@@ -346,25 +368,8 @@ while 1:
                 # Setup cursor for animation to play
                 cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
                 cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
-                newLine = True
-        
-        if event.type == pygame.JOYBUTTONDOWN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
-            # If this event is reached, the user has successfully submitted a poem
-            
-            # Limit for poems on screen
-            if len(poetryBank) == poemLimit:
-                poetryBank.pop()
+                newLine = True                
 
-            # Insert poem into the bank
-            poetryBank.insert(0, " ".join(gamestring.getList()))
+        await asyncio.sleep(0)
 
-            # Reset Text box
-            gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
-        
-            # Setup cursor for animation to play
-            cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
-            cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
-            newLine = True                
-
-    # Update graphics
-    pygame.display.update()
+asyncio.run(main())
