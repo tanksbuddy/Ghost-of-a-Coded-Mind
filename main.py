@@ -144,8 +144,10 @@ deadzoneX = 0.8
 deadzoneY = 0.7
 
 # Setup screen of game
-display_surface = pygame.display.set_mode((width, height))
+display_surface = pygame.display_set_mode((width, height))
+# display_surface = pygame.display.set_mode((width, height), pygame.SCALED)
 pygame.display.set_caption('Ghost of a Coded Mind')
+# pygame.display.toggle_fullscreen()
 
 # Format of the poem
 # PRONOUNS SENSES "The" NOUNS VERBS
@@ -213,6 +215,11 @@ titleRect6.center = (width / 2, 100 + 80)
 lineRectTop.center = (width / 2, 100 + 96)
 lineRectBot.center = (width / 2, height - 200)
 
+# Variables for fading in UI at beginning
+alphaSurface1 = pygame.Surface((width, height))
+alphaSurface1.fill(black)
+alph = 260
+
 # Last setups before loop:
 poetryBank = list() # List of recorded poems
 newLine = False # Flag for cursor animation
@@ -226,7 +233,7 @@ lastMove = time.time()
 
 async def main():
 
-    global gamestring, newLine, lastMove
+    global gamestring, newLine, lastMove, alph
     
     while True:
         # Get the current editable poem words
@@ -278,6 +285,12 @@ async def main():
         display_surface.blit(theText, theRect)
         display_surface.blit(nounText, nounRect)
         display_surface.blit(verbText, verbRect)
+
+        # Play fade in (if applicable)
+        if (alph >= 0):
+            alph -= 0.1
+            alphaSurface1.set_alpha(alph)
+            display_surface.blit(alphaSurface1, (0, 0))
 
         # Display all recorded poems
         for i in range(len(poetryBank)):
