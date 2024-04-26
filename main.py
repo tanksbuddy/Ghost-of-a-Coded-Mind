@@ -8,21 +8,20 @@
 ## Version: 1.2
 
 import copy
+import multiprocessing
 import time
 import asyncio
+from typing import NamedTuple
 import pygame, random
+import requests
+from timeloop import Timeloop
+from datetime import timedelta
 from time import sleep
 from enum import Enum
 
 pygame.init()
-pygame.joystick.init()
-joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
-if(len(joysticks) > 0):
-    joystick = joysticks[0]
-    joystick.init()
-
-    print(f"Numbuttons = {joysticks[0].get_numbuttons()}")
-    print(f"Numhat = {joystick.get_numaxes()}")
+tl = Timeloop()
+lock = multiprocessing.Lock()
 
 # Enum class to denote which word is selected
 class WordSelection(Enum):
@@ -30,6 +29,10 @@ class WordSelection(Enum):
     sense = 2
     noun = 3
     verb = 4
+
+class Poem(NamedTuple):
+    id: str
+    text: str
 
 # Class that defines a string representing a poem
 class GameString:
@@ -127,6 +130,10 @@ class GameString:
         retVal = [self.pronouns[self.pronounIndex], self.senses[self.senseIndex], "The", self.nouns[self.nounIndex], self.verbs[self.verbIndex]]
         return retVal
 
+# URL for poetry database
+session = requests.Session()
+url = "http://localhost:4000/api/poems"
+offlineMode = False # If any HTTP request fails at any point, the game will switch to offline mode
 
 # Declare constants
 wordLimit = 11
@@ -138,16 +145,11 @@ blue = (0, 0, 128)
 width = 1920
 height = 1080
 
-# Change the delay and deadzone to optimize controller sensitivity
-delay = 0.25
-deadzoneX = 0.8
-deadzoneY = 0.7
-
 # Setup screen of game
-display_surface = pygame.display_set_mode((width, height))
-# display_surface = pygame.display.set_mode((width, height), pygame.SCALED)
+# display_surface = pygame.display_set_mode((width, height))
+display_surface = pygame.display.set_mode((width, height), pygame.SCALED)
 pygame.display.set_caption('Ghost of a Coded Mind')
-# pygame.display.toggle_fullscreen()
+pygame.display.toggle_fullscreen()
 
 # Format of the poem
 # PRONOUNS SENSES "The" NOUNS VERBS
@@ -186,6 +188,11 @@ instructionText = font.render("INSERT DREAM...", True, green, black)
 instructionRect = instructionText.get_rect()
 instructionRect.center = (width / 6 + instructionRect.width / 2, height - 150)
 
+# Create text for offline text box
+offlineText = font.render("OFFLINE", True, blue, black)
+offlineRect = offlineText.get_rect()
+offlineRect.center = (offlineRect.width / 2, offlineRect.height / 2)
+
 # Create text for title
 title = (r"  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", r" /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", r"/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", r"\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", r" \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", r"        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ ")
 titlefont = pygame.font.Font('ModernDOS9x16.ttf', 16)
@@ -216,13 +223,29 @@ lineRectTop.center = (width / 2, 100 + 96)
 lineRectBot.center = (width / 2, height - 200)
 
 # Variables for fading in UI at beginning
-alphaSurface1 = pygame.Surface((width, height))
-alphaSurface1.fill(black)
-alph = 260
+alphaSurface = pygame.Surface((width, height))
+alphaSurface.fill(black)
+alph = 255
 
 # Last setups before loop:
+initialResponse = session.get(url)
+initialPoems = []
+if (initialResponse.status_code == 200):
+    initialPoems = map(lambda entry: Poem(entry["id"], entry["text"]), initialResponse.json()["data"])
+else:
+    offlineMode = True
+
+poemAnimationQueue = list(initialPoems) # List of poems yet to be typed onto screen
 poetryBank = list() # List of recorded poems
 newLine = False # Flag for cursor animation
+cursor = cursorStart = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
+cursorCensor = cursorCensorStart = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
+
+# Start animating poems if we already have poems initially
+if (poemAnimationQueue != 0):
+    poetryBank.append(poemAnimationQueue.pop())
+    newLine = True
+
 gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit)) # Current editable poem
 theText = font.render(" The ", True, green, black) # Render "The" part of each poem
 
@@ -233,9 +256,16 @@ lastMove = time.time()
 
 async def main():
 
-    global gamestring, newLine, lastMove, alph
+    global gamestring, newLine, lastMove, alph, cursor, cursorCensor, offlineMode
+
+    tl.start(block = False)
+    jobStopped = False
     
     while True:
+        if (not jobStopped and offlineMode):
+            tl.stop()
+            jobStopped = True
+
         # Get the current editable poem words
         pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
         senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
@@ -289,12 +319,16 @@ async def main():
         # Play fade in (if applicable)
         if (alph >= 0):
             alph -= 0.1
-            alphaSurface1.set_alpha(alph)
-            display_surface.blit(alphaSurface1, (0, 0))
+            alphaSurface.set_alpha(alph)
+            display_surface.blit(alphaSurface, (0, 0))
+
+        # Text to signify whether game is connected to server
+        if (offlineMode):
+            display_surface.blit(offlineText, offlineRect)
 
         # Display all recorded poems
         for i in range(len(poetryBank)):
-            text = font.render("<: " + poetryBank[i], True, green, black)
+            text = font.render("<: " + poetryBank[i].text, True, green, black)
             textRect = text.get_rect()
             textRect.center = (width / 6 + textRect.width / 2, height / 4 + 50*i)
             display_surface.blit(text, textRect)
@@ -313,25 +347,20 @@ async def main():
                 pygame.draw.rect(display_surface, black, cursorCensor)
                 sleep(0.05)
             
-            # Otherwise, end the animation
+            # When a line is finished, add another poem and reset animation
             else:
-                newLine = False
+                lock.acquire()
+                if (len(poemAnimationQueue) != 0):
+                    # Limit for poems on screen
+                    if len(poetryBank) == poemLimit:
+                        poetryBank.pop()
 
-        if ((time.time() - lastMove) > delay and len(joysticks) > 0):
-            if(joystick.get_axis(1) > deadzoneY):
-                gamestring.swapWord(False) # Go through selected bank down
-                lastMove = time.time()
-            elif(joystick.get_axis(0) > deadzoneX):
-                gamestring.swapSelected(True) # Move to right word
-                lastMove = time.time()
-            elif(joystick.get_axis(1) < -deadzoneY):
-                gamestring.swapWord(True) # Go through selected bank up
-                lastMove = time.time()
-            elif(joystick.get_axis(0) < -deadzoneX):
-                gamestring.swapSelected(False) # Move to left word
-                lastMove = time.time() 
-                
-            #print(str(joystick.get_axis(1)) + "     " + str(joystick.get_axis(0)))
+                    poetryBank.insert(0, poemAnimationQueue.pop())
+                    cursor = cursorStart
+                    cursorCensor = cursorCensorStart
+                else:
+                    newLine = False
+                lock.release()
                 
         # Update graphics
         pygame.display.update()
@@ -349,40 +378,47 @@ async def main():
                     gamestring.swapWord(False) # Go through selected bank down
                 if event.key == pygame.K_RETURN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
                     # If this event is reached, the user has successfully submitted a poem
-                    
-                    # Limit for poems on screen
-                    if len(poetryBank) == poemLimit:
-                        poetryBank.pop()
 
-                    # Insert poem into the bank
-                    poetryBank.insert(0, " ".join(gamestring.getList()))
+                    poemText = " ".join(gamestring.getList())
+                    poemId = ""
+
+                    # Post the poem onto the database if the game is online
+                    if (not offlineMode):
+                        postMessage = session.post(url, convert_poem_to_json_format(poemText))
+
+                        if (postMessage.status_code == 201):
+                            poemId = postMessage.json()["data"]["id"]
+                        else:
+                            offlineMode = True
 
                     # Reset Text box
                     gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
                 
-                    # Setup cursor for animation to play
-                    cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
-                    cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
-                    newLine = True
-            
-            if event.type == pygame.JOYBUTTONDOWN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
-                # If this event is reached, the user has successfully submitted a poem
-                
-                # Limit for poems on screen
-                if len(poetryBank) == poemLimit:
-                    poetryBank.pop()
+                    lock.acquire()
+                    # Also will add poem to the queue
+                    poemAnimationQueue.append(Poem(poemId, poemText))
 
-                # Insert poem into the bank
-                poetryBank.insert(0, " ".join(gamestring.getList()))
-
-                # Reset Text box
-                gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
-            
-                # Setup cursor for animation to play
-                cursor = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
-                cursorCensor = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
-                newLine = True                
+                    # Setup animation to start adding a new line of poetry
+                    newLine = True               
+                    lock.release()
 
         await asyncio.sleep(0)
+
+def convert_poem_to_json_format(poem):
+    return { "poem": { "text": poem } }
+
+@tl.job(interval=timedelta(seconds=10))
+def update_poems():
+    global tl, session, poetryBank, poemAnimationQueue, newLine, lock
+
+    response = session.get(url)
+    if (response.status_code != 200): return
+
+    poems = map(lambda entry: Poem(entry["id"], entry["text"]), response.json()["data"])
+
+    lock.acquire()
+    poemAnimationQueue += list(set(poems) - set(poetryBank + poemAnimationQueue))
+    newLine = True
+    lock.release()
 
 asyncio.run(main())
