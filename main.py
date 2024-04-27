@@ -194,7 +194,13 @@ offlineRect = offlineText.get_rect()
 offlineRect.center = (offlineRect.width / 2, offlineRect.height / 2)
 
 # Create text for title
-title = (r"  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", r" /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", r"/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", r"\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", r" \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", r"        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ ")
+title = [
+    r"  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", 
+    r" /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", 
+    r"/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", 
+    r"\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", 
+    r" \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", 
+    r"        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ "]
 titlefont = pygame.font.Font('ModernDOS9x16.ttf', 16)
 titleText1 = titlefont.render(title[0], True, green, black)
 titleText2 = titlefont.render(title[1], True, green, black)
@@ -213,13 +219,13 @@ titleRect6 = titleText6.get_rect()
 lineRectTop = lineText.get_rect()
 lineRectBot = copy.deepcopy(lineRectTop)
 
-titleRect1.center = (width / 2, 100)
-titleRect2.center = (width / 2, 100 + 16)
-titleRect3.center = (width / 2, 100 + 32)
-titleRect4.center = (width / 2, 100 + 48)
-titleRect5.center = (width / 2, 100 + 64)
-titleRect6.center = (width / 2, 100 + 80)
-lineRectTop.center = (width / 2, 100 + 96)
+titleRect1.center = (width / 2, 90)
+titleRect2.center = (width / 2, 90 + 18)
+titleRect3.center = (width / 2, 90 + 36)
+titleRect4.center = (width / 2, 90 + 54)
+titleRect5.center = (width / 2, 90 + 72)
+titleRect6.center = (width / 2, 90 + 90)
+lineRectTop.center = (width / 2, 90 + 108)
 lineRectBot.center = (width / 2, height - 200)
 
 # Variables for fading in UI at beginning
@@ -318,7 +324,7 @@ async def main():
 
         # Play fade in (if applicable)
         if (alph >= 0):
-            alph -= 0.1
+            alph -= 1
             alphaSurface.set_alpha(alph)
             display_surface.blit(alphaSurface, (0, 0))
 
@@ -384,7 +390,7 @@ async def main():
 
                     # Post the poem onto the database if the game is online
                     if (not offlineMode):
-                        postMessage = session.post(url, convert_poem_to_json_format(poemText))
+                        postMessage = session.post(url, json=convert_poem_to_json_format(poemText))
 
                         if (postMessage.status_code == 201):
                             poemId = postMessage.json()["data"]["id"]
