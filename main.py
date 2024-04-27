@@ -9,6 +9,7 @@
 
 import copy
 import multiprocessing
+import os
 import time
 import asyncio
 from typing import NamedTuple
@@ -132,7 +133,7 @@ class GameString:
 
 # URL for poetry database
 session = requests.Session()
-url = "http://localhost:4000/api/poems"
+url = os.environ["API_URL"]
 offlineMode = False # If any HTTP request fails at any point, the game will switch to offline mode
 
 # Declare constants
@@ -248,7 +249,7 @@ cursor = cursorStart = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
 cursorCensor = cursorCensorStart = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
 
 # Start animating poems if we already have poems initially
-if (poemAnimationQueue != 0):
+if (len(poemAnimationQueue) != 0):
     poetryBank.append(poemAnimationQueue.pop())
     newLine = True
 
@@ -401,8 +402,11 @@ async def main():
                     gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
                 
                     lock.acquire()
-                    # Also will add poem to the queue
-                    poemAnimationQueue.append(Poem(poemId, poemText))
+                    # Also will add poem to the queue if poetry bank isn't empty
+                    if (len(poetryBank) != 0):
+                        poemAnimationQueue.append(Poem(poemId, poemText))
+                    else:
+                        poetryBank.insert(0, Poem(poemId, poemText))
 
                     # Setup animation to start adding a new line of poetry
                     newLine = True               
