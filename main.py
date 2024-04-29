@@ -7,22 +7,21 @@
 ## Authors: Nami Eskandarian & Joseph Norton
 ## Version: 1.2
 
+import json
+import pyodide
 import copy
-import multiprocessing
 import os
 import time
 import asyncio
 from typing import NamedTuple
 import pygame, random
-import requests
-from timeloop import Timeloop
-from datetime import timedelta
 from time import sleep
 from enum import Enum
 
+from fetch import RequestHandler
+
 pygame.init()
-tl = Timeloop()
-lock = multiprocessing.Lock()
+lock = asyncio.Lock()
 
 # Enum class to denote which word is selected
 class WordSelection(Enum):
@@ -132,7 +131,7 @@ class GameString:
         return retVal
 
 # URL for poetry database
-session = requests.Session()
+session = RequestHandler()
 url = os.environ["API_URL"]
 offlineMode = False # If any HTTP request fails at any point, the game will switch to offline mode
 
@@ -148,9 +147,8 @@ height = 1080
 
 # Setup screen of game
 # display_surface = pygame.display_set_mode((width, height))
-display_surface = pygame.display.set_mode((width, height), pygame.SCALED)
+display_surface = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Ghost of a Coded Mind')
-pygame.display.toggle_fullscreen()
 
 # Format of the poem
 # PRONOUNS SENSES "The" NOUNS VERBS
@@ -235,23 +233,11 @@ alphaSurface.fill(black)
 alph = 255
 
 # Last setups before loop:
-initialResponse = session.get(url)
-initialPoems = []
-if (initialResponse.status_code == 200):
-    initialPoems = map(lambda entry: Poem(entry["id"], entry["text"]), initialResponse.json()["data"])
-else:
-    offlineMode = True
-
-poemAnimationQueue = list(initialPoems) # List of poems yet to be typed onto screen
+poemAnimationQueue = [] # List of poems yet to be typed onto screen
 poetryBank = list() # List of recorded poems
 newLine = False # Flag for cursor animation
 cursor = cursorStart = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
 cursorCensor = cursorCensorStart = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
-
-# Start animating poems if we already have poems initially
-if (len(poemAnimationQueue) != 0):
-    poetryBank.append(poemAnimationQueue.pop())
-    newLine = True
 
 gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit)) # Current editable poem
 theText = font.render(" The ", True, green, black) # Render "The" part of each poem
@@ -262,17 +248,25 @@ creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
 lastMove = time.time()
 
 async def main():
+    global gamestring, newLine, lastMove, alph, cursor, cursorCensor, offlineMode, poemAnimationQueue
 
-    global gamestring, newLine, lastMove, alph, cursor, cursorCensor, offlineMode
+    # INITIAL 'GET' REQUEST TO START WRITING POEMS ON STARTUP
+    if (not offlineMode):
+        try:
+            initialResponse = await session.get(url)
+            poemAnimationQueue = list(map(lambda entry: Poem(entry["id"], entry["text"]), json.loads(initialResponse)["data"]))
 
-    tl.start(block = False)
-    jobStopped = False
-    
+            # Start animating poems if we already have poems initially
+            if (len(poemAnimationQueue) != 0):
+                poetryBank.append(poemAnimationQueue.pop())
+                newLine = True
+        except:
+            offlineMode = True
+
+    # Update poems every 10 seconds concurrently
+    asyncio.gather(update_poems())
+
     while True:
-        if (not jobStopped and offlineMode):
-            tl.stop()
-            jobStopped = True
-
         # Get the current editable poem words
         pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
         senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
@@ -356,18 +350,17 @@ async def main():
             
             # When a line is finished, add another poem and reset animation
             else:
-                lock.acquire()
-                if (len(poemAnimationQueue) != 0):
-                    # Limit for poems on screen
-                    if len(poetryBank) == poemLimit:
-                        poetryBank.pop()
+                async with lock:
+                    if (len(poemAnimationQueue) != 0):
+                        # Limit for poems on screen
+                        if len(poetryBank) == poemLimit:
+                            poetryBank.pop()
 
-                    poetryBank.insert(0, poemAnimationQueue.pop())
-                    cursor = cursorStart
-                    cursorCensor = cursorCensorStart
-                else:
-                    newLine = False
-                lock.release()
+                        poetryBank.insert(0, poemAnimationQueue.pop())
+                        cursor = cursorStart
+                        cursorCensor = cursorCensorStart
+                    else:
+                        newLine = False
                 
         # Update graphics
         pygame.display.update()
@@ -391,44 +384,44 @@ async def main():
 
                     # Post the poem onto the database if the game is online
                     if (not offlineMode):
-                        postMessage = session.post(url, json=convert_poem_to_json_format(poemText))
-
-                        if (postMessage.status_code == 201):
-                            poemId = postMessage.json()["data"]["id"]
-                        else:
+                        try:
+                            postMessage = await session.post(url, data=convert_poem_to_json_format(poemText))
+                            poemId = json.loads(postMessage)["data"]["id"]
+                        except:
                             offlineMode = True
 
                     # Reset Text box
                     gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
                 
-                    lock.acquire()
-                    # Also will add poem to the queue if poetry bank isn't empty
-                    if (len(poetryBank) != 0):
-                        poemAnimationQueue.append(Poem(poemId, poemText))
-                    else:
-                        poetryBank.insert(0, Poem(poemId, poemText))
+                    async with lock:
+                        # Also will add poem to the queue if poetry bank isn't empty
+                        if (len(poetryBank) != 0):
+                            poemAnimationQueue.append(Poem(poemId, poemText))
+                        else:
+                            poetryBank.insert(0, Poem(poemId, poemText))
 
-                    # Setup animation to start adding a new line of poetry
-                    newLine = True               
-                    lock.release()
+                        # Setup animation to start adding a new line of poetry
+                        newLine = True               
 
         await asyncio.sleep(0)
 
 def convert_poem_to_json_format(poem):
     return { "poem": { "text": poem } }
 
-@tl.job(interval=timedelta(seconds=10))
-def update_poems():
-    global tl, session, poetryBank, poemAnimationQueue, newLine, lock
+async def update_poems():
+    global poetryBank, poemAnimationQueue, newLine, lock, offlineMode
 
-    response = session.get(url)
-    if (response.status_code != 200): return
+    while (not offlineMode):
+        await asyncio.sleep(10)
+        try:
+            response = await session.get(url)
 
-    poems = map(lambda entry: Poem(entry["id"], entry["text"]), response.json()["data"])
+            poems = map(lambda entry: Poem(entry["id"], entry["text"]), json.loads(response)["data"])
 
-    lock.acquire()
-    poemAnimationQueue += list(set(poems) - set(poetryBank + poemAnimationQueue))
-    newLine = True
-    lock.release()
+            async with lock:
+                poemAnimationQueue += list(set(poems) - set(poetryBank + poemAnimationQueue))
+                newLine = True
+        except:
+            offlineMode = True
 
 asyncio.run(main())
