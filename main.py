@@ -132,7 +132,8 @@ class GameString:
 
 # URL for poetry database
 session = RequestHandler()
-url = os.environ["API_URL"]
+# url = os.environ["API_URL"]
+url = "https://poetry-game-api.onrender.com/api/poems"
 offlineMode = False # If any HTTP request fails at any point, the game will switch to offline mode
 
 # Declare constants
@@ -192,6 +193,14 @@ offlineText = font.render("OFFLINE", True, blue, black)
 offlineRect = offlineText.get_rect()
 offlineRect.center = (offlineRect.width / 2, offlineRect.height / 2)
 
+# Create text for loading
+bootText = font.render("...LOADING DREAMS...", True, green, black)
+bootText2 = pygame.font.Font('ModernDOS9x16.ttf', 16).render("(This may take up to a minute)", True, green, black)
+bootRect = bootText.get_rect()
+bootRect2 = bootText2.get_rect()
+bootRect.center = (width / 2, height / 2)
+bootRect2.center = (width / 2, height - 200)
+
 # Create text for title
 title = [
     r"  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", 
@@ -249,6 +258,12 @@ lastMove = time.time()
 
 async def main():
     global gamestring, newLine, lastMove, alph, cursor, cursorCensor, offlineMode, poemAnimationQueue
+
+    # Boot up game
+    display_surface.fill(black)
+    display_surface.blit(bootText, bootRect)
+    display_surface.blit(bootText2, bootRect2)
+    pygame.display.update()
 
     # INITIAL 'GET' REQUEST TO START WRITING POEMS ON STARTUP
     if (not offlineMode):
