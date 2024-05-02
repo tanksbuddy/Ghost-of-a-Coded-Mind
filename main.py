@@ -22,6 +22,7 @@ from fetch import RequestHandler
 
 pygame.init()
 lock = asyncio.Lock()
+clock = pygame.time.Clock()
 
 # Enum class to denote which word is selected
 class WordSelection(Enum):
@@ -59,8 +60,8 @@ class GameString:
         self.nounIndex = 0
         self.verbIndex = 0
 
-    # Method to swap selected type of word
-    def swapSelected(self, right):
+    # Method to swap selected type of word with a direction (used for keyboard)
+    def swapSelectedWithDirection(self, right):
         if right == 1:
             if self.select == WordSelection.pronoun:
                 self.select = WordSelection.sense
@@ -79,6 +80,10 @@ class GameString:
                 self.select = WordSelection.sense
             elif self.select == WordSelection.verb:
                 self.select = WordSelection.noun
+
+    # Method to swap selected type of word with the type (used for mouse)
+    def swapSelectedWithWordType(self, wordType):
+        self.select = wordType
 
     # Method to swap word based on selection
     def swapWord(self, up):
@@ -129,11 +134,14 @@ class GameString:
     def getList(self):
         retVal = [self.pronouns[self.pronounIndex], self.senses[self.senseIndex], "The", self.nouns[self.nounIndex], self.verbs[self.verbIndex]]
         return retVal
+    
+    # Returns a boolean determining if poem is ready to submit
+    def checkForValidEntry(self):
+        return self.pronounIndex != 0 and self.nounIndex != 0 and self.senseIndex != 0 and self.verbIndex != 0
 
 # URL for poetry database
 session = RequestHandler()
-# url = os.environ["API_URL"]
-url = "https://poetry-game-api.onrender.com/api/poems"
+url = os.environ["API_URL"]
 offlineMode = False # If any HTTP request fails at any point, the game will switch to offline mode
 
 # Declare constants
@@ -147,7 +155,6 @@ width = 1920
 height = 1080
 
 # Setup screen of game
-# display_surface = pygame.display_set_mode((width, height))
 display_surface = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Ghost of a Coded Mind')
 
@@ -185,6 +192,7 @@ font = pygame.font.Font('ModernDOS9x16.ttf', 32)
 
 # Create text for instructions
 instructionText = font.render("INSERT DREAM...", True, green, black)
+instructionTextHighlight = font.render("INSERT DREAM...", True, black, green)
 instructionRect = instructionText.get_rect()
 instructionRect.center = (width / 6 + instructionRect.width / 2, height - 150)
 
@@ -255,9 +263,10 @@ creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker", True
 creditRect = creditLine.get_rect()
 creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
 lastMove = time.time()
+mouseOverWord = False
 
 async def main():
-    global gamestring, newLine, lastMove, alph, cursor, cursorCensor, offlineMode, poemAnimationQueue
+    global gamestring, newLine, lastMove, alph, cursor, cursorCensor, offlineMode, poemAnimationQueue, mouseOverWord
 
     # Boot up game
     display_surface.fill(black)
@@ -322,7 +331,6 @@ async def main():
         display_surface.blit(titleText6, titleRect6)
         display_surface.blit(lineText, lineRectTop)
         display_surface.blit(lineText, lineRectBot)
-        display_surface.blit(instructionText, instructionRect)
         display_surface.blit(creditLine, creditRect)
 
         # Display the editable poem
@@ -331,6 +339,12 @@ async def main():
         display_surface.blit(theText, theRect)
         display_surface.blit(nounText, nounRect)
         display_surface.blit(verbText, verbRect)
+
+        # Display instructions/button
+        if gamestring.checkForValidEntry():
+            display_surface.blit(instructionTextHighlight, instructionRect)
+        else:
+            display_surface.blit(instructionText, instructionRect)
 
         # Play fade in (if applicable)
         if (alph >= 0):
@@ -382,46 +396,77 @@ async def main():
 
         # Keep track of events
         for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    gamestring.swapSelected(False) # Move to left word
-                if event.key == pygame.K_RIGHT:
-                    gamestring.swapSelected(True) # Move to right word
-                if event.key == pygame.K_UP:
-                    gamestring.swapWord(True) # Go through selected bank up
-                if event.key == pygame.K_DOWN:
-                    gamestring.swapWord(False) # Go through selected bank down
-                if event.key == pygame.K_RETURN and gamestring.pronounIndex != 0 and gamestring.nounIndex != 0 and gamestring.senseIndex != 0 and gamestring.verbIndex != 0:
-                    # If this event is reached, the user has successfully submitted a poem
 
-                    poemText = " ".join(gamestring.getList())
-                    poemId = ""
+            # MOUSE
+            if event.type == pygame.MOUSEMOTION:
+                mouseOverWord = True
 
-                    # Post the poem onto the database if the game is online
-                    if (not offlineMode):
-                        try:
-                            postMessage = await session.post(url, data=convert_poem_to_json_format(poemText))
-                            poemId = json.loads(postMessage)["data"]["id"]
-                        except:
-                            offlineMode = True
+                if proRect.collidepoint(event.pos): # Select pronouns
+                    if gamestring.select != WordSelection.pronoun:
+                        gamestring.swapSelectedWithWordType(WordSelection.pronoun)
+                elif senRect.collidepoint(event.pos): # Select senses
+                    if gamestring.select != WordSelection.sense:
+                        gamestring.swapSelectedWithWordType(WordSelection.sense)
+                elif nounRect.collidepoint(event.pos): # Select nouns
+                    if gamestring.select != WordSelection.noun:
+                        gamestring.swapSelectedWithWordType(WordSelection.noun)
+                elif verbRect.collidepoint(event.pos): # Select verbs
+                    if gamestring.select != WordSelection.verb:
+                        gamestring.swapSelectedWithWordType(WordSelection.verb)
+                else: # Do not register click unless mouse is hovering over a word bank
+                    mouseOverWord = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if mouseOverWord: # Cycle through selected word
+                    gamestring.swapWord(True)
+                elif instructionRect.collidepoint(event.pos) and gamestring.checkForValidEntry(): # Successful poem submission
+                    await submit_poem()
 
-                    # Reset Text box
-                    gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
-                
-                    async with lock:
-                        # Also will add poem to the queue if poetry bank isn't empty
-                        if (len(poetryBank) != 0):
-                            poemAnimationQueue.append(Poem(poemId, poemText))
-                        else:
-                            poetryBank.insert(0, Poem(poemId, poemText))
+            # KEYBOARD
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT: # Move to left word
+                    gamestring.swapSelectedWithDirection(False) 
+                if event.key == pygame.K_RIGHT: # Move to right word
+                    gamestring.swapSelectedWithDirection(True) 
+                if event.key == pygame.K_UP: # Cycle through selected bank up
+                    gamestring.swapWord(True) 
+                if event.key == pygame.K_DOWN: # Cycle through selected bank down
+                    gamestring.swapWord(False) 
+                if event.key == pygame.K_RETURN and gamestring.checkForValidEntry(): # User has successfully submitted a poem
+                    await submit_poem()   
 
-                        # Setup animation to start adding a new line of poetry
-                        newLine = True               
+        clock.tick(60)
 
         await asyncio.sleep(0)
 
 def convert_poem_to_json_format(poem):
     return { "poem": { "text": poem } }
+
+async def submit_poem():
+    global gamestring, poetryBank, poemAnimationQueue, newLine, lock, offlineMode
+
+    poemText = " ".join(gamestring.getList())
+    poemId = ""
+
+    # Post the poem onto the database if the game is online
+    if (not offlineMode):
+        try:
+            postMessage = await session.post(url, data=convert_poem_to_json_format(poemText))
+            poemId = json.loads(postMessage)["data"]["id"]
+        except:
+            offlineMode = True
+
+    # Reset Text box
+    gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit))
+
+    async with lock:
+        # Also will add poem to the queue if poetry bank isn't empty
+        if (len(poetryBank) != 0):
+            poemAnimationQueue.append(Poem(poemId, poemText))
+        else:
+            poetryBank.insert(0, Poem(poemId, poemText))
+
+        # Setup animation to start adding a new line of poetry
+        newLine = True        
 
 async def update_poems():
     global poetryBank, poemAnimationQueue, newLine, lock, offlineMode
