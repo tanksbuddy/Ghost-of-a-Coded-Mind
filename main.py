@@ -189,12 +189,13 @@ file.close()
 
 # Setup font for terminal
 font = pygame.font.Font('ModernDOS9x16.ttf', 32)
+interactableFont = pygame.font.Font('ModernDOS9x16.ttf', 40)
 
 # Create text for instructions
-instructionText = font.render("INSERT DREAM...", True, green, black)
-instructionTextHighlight = font.render("INSERT DREAM...", True, black, green)
+instructionText = interactableFont.render("INSERT DREAM...", True, green, black)
+instructionTextHighlight = interactableFont.render("INSERT DREAM...", True, black, green)
 instructionRect = instructionText.get_rect()
-instructionRect.center = (width / 6 + instructionRect.width / 2, height - 150)
+instructionRect.center = (width / 8 + instructionRect.width / 2, height - 150)
 
 # Create text for offline text box
 offlineText = font.render("OFFLINE", True, blue, black)
@@ -257,11 +258,12 @@ cursor = cursorStart = pygame.Rect(width / 6, height / 4 - 17, 24, 32)
 cursorCensor = cursorCensorStart = pygame.Rect(width / 6 + 24, height / 4 - 17, 1000, 32)
 
 gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit)) # Current editable poem
-theText = font.render(" The ", True, green, black) # Render "The" part of each poem
+theText = interactableFont.render(" The ", True, green, black) # Render "The" part of each poem
+theRect = theText.get_rect()
 
 creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker", True, green, black)
 creditRect = creditLine.get_rect()
-creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
+creditRect.center = (width / 8 + creditRect.width / 2, height - 100)
 lastMove = time.time()
 mouseOverWord = False
 
@@ -292,32 +294,35 @@ async def main():
 
     while True:
         # Get the current editable poem words
-        pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
-        senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
-        nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black) 
-        verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
+        pronounText = interactableFont.render(" " + gamestring.getList()[0] + " ", True, green, black)
+        senseText = interactableFont.render(" " + gamestring.getList()[1] + " ", True, green, black)
+        nounText = interactableFont.render(" " + gamestring.getList()[3] + " ", True, green, black) 
+        verbText = interactableFont.render(" " + gamestring.getList()[4] + " ", True, green, black)
 
         # Change whichever word is selected to have a different background
         if gamestring.select == WordSelection.pronoun:
-            pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
+            pronounText = interactableFont.render(" " + gamestring.getList()[0] + " ", True, black, green)
         elif gamestring.select == WordSelection.sense:
-            senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
+            senseText = interactableFont.render(" " + gamestring.getList()[1] + " ", True, black, green)
         elif gamestring.select == WordSelection.noun:
-            nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
+            nounText = interactableFont.render(" " + gamestring.getList()[3] + " ", True, black, green)
         elif gamestring.select == WordSelection.verb:
-            verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
+            verbText = interactableFont.render(" " + gamestring.getList()[4] + " ", True, black, green)
 
         # Setup text boxes for editable poem
         verbRect = verbText.get_rect()
-        verbRect.center = (5 * width / 6 - verbRect.width / 2, height - 150)
+        verbRect.center = (7 * width / 8 - verbRect.width / 2, height - 125)
+
         nounRect = nounText.get_rect()
-        nounRect.center = (verbRect.center[0] - verbRect.width / 2 - nounRect.width / 2, height - 150)
-        theRect = theText.get_rect()
-        theRect.center = (nounRect.center[0] - nounRect.width / 2 - theRect.width / 2, height - 150)
+        nounRect.center = (verbRect.center[0] - verbRect.width / 2 - nounRect.width / 2, height - 125)
+
+        theRect.center = (nounRect.center[0] - nounRect.width / 2 - theRect.width / 2, height - 125)
+
         senRect = senseText.get_rect()
-        senRect.center = (theRect.center[0] - theRect.width / 2 - senRect.width / 2, height - 150)
+        senRect.center = (theRect.center[0] - theRect.width / 2 - senRect.width / 2, height - 125)
+
         proRect = pronounText.get_rect()
-        proRect.center = (senRect.center[0] - senRect.width / 2 - proRect.width / 2, height - 150)
+        proRect.center = (senRect.center[0] - senRect.width / 2 - proRect.width / 2, height - 125)
 
         # Fill the screen with a black color
         display_surface.fill(black)
@@ -434,7 +439,7 @@ async def main():
                 if event.key == pygame.K_RETURN and gamestring.checkForValidEntry(): # User has successfully submitted a poem
                     await submit_poem()   
 
-        clock.tick(60)
+        clock.tick(30)
 
         await asyncio.sleep(0)
 
