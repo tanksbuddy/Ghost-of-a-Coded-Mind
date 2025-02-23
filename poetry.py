@@ -5,6 +5,7 @@
 ## Represents an old 90s terminal.
 ##
 ## Authors: Nami Eskandarian & Joseph Norton
+## Optimized by: Mark Nusser
 ## Version: 1.3
 
 import copy
@@ -181,8 +182,6 @@ senses = file.read().split("\n")
 senses[0] = "[SENSE]" # "[Sense]"
 file.close()
 
-the = "The"
-
 file = open("Noun Wordbank.txt")
 nouns = file.read().split("\n")
 nouns.pop(0)
@@ -197,15 +196,23 @@ file.close()
 
 # Setup font for terminal
 font = pygame.font.Font('ModernDOS9x16.ttf', 32)
+interactableFont = pygame.font.Font('ModernDOS9x16.ttf', 40)
 
 # Create text for instructions
-instructionText = font.render("INSERT DREAM...", True, green, black)
+instructionText = interactableFont.render("INSERT DREAM...", True, green, black)
+instructionTextHighlight = interactableFont.render("INSERT DREAM...", True, black, green)
 instructionRect = instructionText.get_rect()
-instructionRect.center = (width / 6 + instructionRect.width / 2, height - 150)
+instructionRect.center = (width / 8 + instructionRect.width / 2, height - 150)
 
 # Create text for title
-title = ("  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", " /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", "/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", "\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", " \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", "        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ ")
-titlefont = pygame.font.Font('ModernDOS9x16.ttf', 16)
+title = [
+    r"  ________.__                    __            _____           _________            .___         .___    _____  .__            .___", 
+    r" /  _____/|  |__   ____  _______/  |_    _____/ ____\ _____    \_   ___ \  ____   __| _/____   __| _/   /     \ |__| ____    __| _/", 
+    r"/   \  ___|  |  \ /  _ \/  ___/\   __\  /  _ \   __\  \__  \   /    \  \/ /  _ \ / __ |/ __ \ / __ |   /  \ /  \|  |/    \  / __ | ", 
+    r"\    \_\  \   Y  (  <_> )___ \  |  |   (  <_> )  |     / __ \_ \     \___(  <_> ) /_/ \  ___// /_/ |  /    Y    \  |   |  \/ /_/ | ", 
+    r" \______  /___|  /\____/____  > |__|    \____/|__|    (____  /  \______  /\____/\____ |\___  >____ |  \____|__  /__|___|  /\____ | ", 
+    r"        \/     \/           \/                             \/          \/            \/    \/     \/          \/        \/      \/ "]
+titlefont = pygame.font.Font('ModernDOS9x16.ttf', 20)
 titleText1 = titlefont.render(title[0], True, green, black)
 titleText2 = titlefont.render(title[1], True, green, black)
 titleText3 = titlefont.render(title[2], True, green, black)
@@ -223,54 +230,58 @@ titleRect6 = titleText6.get_rect()
 lineRectTop = lineText.get_rect()
 lineRectBot = copy.deepcopy(lineRectTop)
 
-titleRect1.center = (width / 2, 100)
-titleRect2.center = (width / 2, 100 + 16)
-titleRect3.center = (width / 2, 100 + 32)
-titleRect4.center = (width / 2, 100 + 48)
-titleRect5.center = (width / 2, 100 + 64)
-titleRect6.center = (width / 2, 100 + 80)
-lineRectTop.center = (width / 2, 100 + 96)
-lineRectBot.center = (width / 2, height - 200)
+titleRect1.center = (width / 2, 96)
+titleRect2.center = (width / 2, 96 + 18)
+titleRect3.center = (width / 2, 96 + 36)
+titleRect4.center = (width / 2, 96 + 54)
+titleRect5.center = (width / 2, 96 + 72)
+titleRect6.center = (width / 2, 96 + 90)
+lineRectTop.center = (width / 2, 90 + 108)
+lineRectBot.center = (width / 2, height - 204)
 
 # Last setups before loop:
 poetryBank = list() # List of recorded poems
 newLine = False # Flag for cursor animation
 gamestring = GameString(pronouns, senses, random.sample(nouns, wordLimit), random.sample(verbs, wordLimit)) # Current editable poem
-theText = font.render(" The ", True, green, black) # Render "The" part of each poem
+theText = interactableFont.render(" The ", True, green, black) # Render "The" part of each poem
+theRect = theText.get_rect()
 
-creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker \n Optimized by Mark Nusser", True, green, black)
+creditLine = titlefont.render("Nami Eskandarian, Joseph Norton, RJ Walker", True, green, black)
 creditRect = creditLine.get_rect()
-creditRect.center = (width / 6 + creditRect.width / 2, height - 100)
+creditRect.center = (width / 8 + creditRect.width / 2, height - 100)
 lastMove = time.time()
 
 while 1:
     # Get the current editable poem words
-    pronounText = font.render(" " + gamestring.getList()[0] + " ", True, green, black)
-    senseText = font.render(" " + gamestring.getList()[1] + " ", True, green, black)
-    nounText = font.render(" " + gamestring.getList()[3] + " ", True, green, black)
-    verbText = font.render(" " + gamestring.getList()[4] + " ", True, green, black)
+    pronounText = interactableFont.render(" " + gamestring.getList()[0] + " ", True, green, black)
+    senseText = interactableFont.render(" " + gamestring.getList()[1] + " ", True, green, black)
+    nounText = interactableFont.render(" " + gamestring.getList()[3] + " ", True, green, black) 
+    verbText = interactableFont.render(" " + gamestring.getList()[4] + " ", True, green, black)
 
     # Change whichever word is selected to have a different background
     if gamestring.select == WordSelection.pronoun:
-        pronounText = font.render(" " + gamestring.getList()[0] + " ", True, black, green)
+        pronounText = interactableFont.render(" " + gamestring.getList()[0] + " ", True, black, green)
     elif gamestring.select == WordSelection.sense:
-        senseText = font.render(" " + gamestring.getList()[1] + " ", True, black, green)
+        senseText = interactableFont.render(" " + gamestring.getList()[1] + " ", True, black, green)
     elif gamestring.select == WordSelection.noun:
-        nounText = font.render(" " + gamestring.getList()[3] + " ", True, black, green)
+        nounText = interactableFont.render(" " + gamestring.getList()[3] + " ", True, black, green)
     elif gamestring.select == WordSelection.verb:
-        verbText = font.render(" " + gamestring.getList()[4] + " ", True, black, green)
+        verbText = interactableFont.render(" " + gamestring.getList()[4] + " ", True, black, green)
 
     # Setup text boxes for editable poem
     verbRect = verbText.get_rect()
-    verbRect.center = (5 * width / 6 - verbRect.width / 2, height - 150)
+    verbRect.center = (7 * width / 8 - verbRect.width / 2, height - 125)
+
     nounRect = nounText.get_rect()
-    nounRect.center = (verbRect.center[0] - verbRect.width / 2 - nounRect.width / 2, height - 150)
-    theRect = theText.get_rect()
-    theRect.center = (nounRect.center[0] - nounRect.width / 2 - theRect.width / 2, height - 150)
+    nounRect.center = (verbRect.center[0] - verbRect.width / 2 - nounRect.width / 2, height - 125)
+
+    theRect.center = (nounRect.center[0] - nounRect.width / 2 - theRect.width / 2, height - 125)
+
     senRect = senseText.get_rect()
-    senRect.center = (theRect.center[0] - theRect.width / 2 - senRect.width / 2, height - 150)
+    senRect.center = (theRect.center[0] - theRect.width / 2 - senRect.width / 2, height - 125)
+
     proRect = pronounText.get_rect()
-    proRect.center = (senRect.center[0] - senRect.width / 2 - proRect.width / 2, height - 150)
+    proRect.center = (senRect.center[0] - senRect.width / 2 - proRect.width / 2, height - 125)
 
     # Fill the screen with a black color
     display_surface.fill(black)
